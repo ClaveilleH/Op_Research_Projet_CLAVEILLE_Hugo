@@ -1,0 +1,5 @@
+.vscode
+rapport/*.log
+rapport/*.aux
+rapport/*.out
+rapport/*.toc
