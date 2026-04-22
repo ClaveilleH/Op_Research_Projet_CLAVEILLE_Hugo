@@ -23,3 +23,57 @@ Pour le rapport, expliquer :
 titre du répo: Op_Research_Projet_NOM_Prenom
 titre du mail: Op Research Projet
 Et envoyer le lien par mail (jcregin@gmail.com)
+
+
+========================================================================================
+
+Dear students
+
+Here are some examples that you have to test with your program
+
+Max flow problem : an index corresponds to an arc
+start_nodes = [0, 0, 0, 1, 1, 2, 2, 3, 3]
+
+  end_nodes = [1, 2, 3, 2, 4, 3, 4, 2, 4]
+
+  capacities = [20, 30, 10, 40, 30, 10, 20, 5, 20]
+
+Compute the max flow from node 0 to node 4
+
+Min cost flow assignment problem
+10 people and 8 tasks
+
+cost = [[90, 76, 75, 70, 50, 74, 12, 68],
+          [35, 85, 55, 65, 48, 101, 70, 83],
+          [125, 95, 90, 105, 59, 120, 36, 73],
+          [45, 110, 95, 115, 104, 83, 37, 71],
+          [60, 105, 80, 75, 59, 62, 93, 88],
+          [45, 65, 110, 95, 47, 31, 81, 34],
+          [38, 51, 107, 41, 69, 99, 115, 48],
+          [47, 85, 57, 71, 92, 77, 109, 36],
+          [39, 63, 97, 49, 118, 56, 92, 61],
+          [47, 101, 71, 60, 88, 109, 52, 90]]
+Assign each person to a task. 
+    1) Without task capacity
+    2) With a task capacity of 2 for each task
+    3) Such that each task is taken at least one
+
+
+Min cost flow problem
+
+start_nodes = [ 0, 0,  1, 1,  1,  2, 2,  3, 4]
+
+  end_nodes   = [ 1, 2,  2, 3,  4,  3, 4,  4, 2]
+
+  capacities  = [15, 8, 20, 4, 10, 15, 4, 20, 5]
+
+  unit_costs  = [ 4, 4,  2, 2,  6,  1, 3,  2, 3]
+
+Add a source s links to node 0 with a capacity 20, and a sink t with arc (3,t) with capacity 5 and arc (4,t) with capacity 15
+Add an arc (t,s) 
+
+    1) Search for the max flow min cost in (t,s)
+    2) Search fpr the max flow min cost in (0,4)
+    3) Compute the most vital arc for the max flow (t,s) : that is the arc thus such that it s removal reduces the flow by the maximum value
+
+jcr

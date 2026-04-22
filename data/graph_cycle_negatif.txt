@@ -1,0 +1,12 @@
+# Graphe de test avec cycle négatif
+# Format : n m s t
+# u v capacite cout
+
+5 7 0 4
+0 1 10 1
+1 2 8 1
+2 3 7 -5
+3 1 6 1
+1 4 5 2
+0 2 4 3
+3 4 10 1
