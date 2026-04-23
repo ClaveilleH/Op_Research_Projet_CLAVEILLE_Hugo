@@ -5,6 +5,7 @@ class Edge:
     """
     Represente une arête dans un graphe, avec une capacité et un coût associés.
     """
+    retour : bool = False
     origin: int
     dest: int
     cap: int
@@ -19,13 +20,19 @@ class Graph:
 
     def add_edge(self, _origin, _dest, cap, cost=0):
         fwd = Edge(origin=_origin, dest=_dest, cap=cap, cost=cost)
-        rev = Edge(origin=_dest, dest=_origin, cap=0, cost=-cost)
+        rev = Edge(origin=_dest, dest=_origin, cap=0, cost=-cost, retour=True)
         self.adj[_origin].append(fwd)
         self.adj[_dest].append(rev)
     
     def add_arc(self, _origin, _dest, cap, cost=0):
         fwd = Edge(origin=_origin, dest=_dest, cap=cap, cost=cost)
         self.adj[_origin].append(fwd)
+
+    def get_edge(self, u, v):
+        for edge in self.adj[u]:
+            if edge.dest == v:
+                return edge
+        return None
 
 
 def load_graph_from_file(filename):
@@ -38,7 +45,8 @@ def load_graph_from_file(filename):
     graph = Graph(n, source=s, sink=t)
     for line in lines[1:]:
         u, v, cap, cost = map(int, line.split())
-        graph.add_arc(u, v, cap, cost)
+        # graph.add_arc(u, v, cap, cost)
+        graph.add_edge(u, v, cap, cost)
     return graph, s, t
 
 

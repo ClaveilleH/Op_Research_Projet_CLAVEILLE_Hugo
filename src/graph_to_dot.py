@@ -1,6 +1,6 @@
 from pathlib import Path
 
-def graph_to_dot(graph, filename, show_capacity=True, show_zero=False):
+def graph_to_dot(graph, filename, show_capacity=True, show_zero=False, show_return=False):
     source = graph.source
     sink = graph.sink
     lines = ["digraph G {", "  rankdir=LR;",
@@ -12,12 +12,15 @@ def graph_to_dot(graph, filename, show_capacity=True, show_zero=False):
         for e in graph.adj[u]:
             if e.cap == 0 and not show_zero:
                 continue
+            if e.retour and not show_return:
+                continue
             label = []
             if show_capacity:
                 label.append(f"{e.cap}")
             lbl = "\n".join(label)
             lbl = f"<{e.cap}|<font color='red'>{e.cost}</font>>"
-            lines.append(f'  {u} -> {e.dest} [label={lbl}, shape=box];')
+            color = "blue" if e.retour else "black"
+            lines.append(f'  {u} -> {e.dest} [label={lbl}, shape=box, color="{color}"];')
             # lines.append(f'  {u} -> {e.dest} [label="{lbl}"];')
     lines.append("}")
     Path(filename).write_text("\n".join(lines), encoding="utf-8")
@@ -30,5 +33,11 @@ if __name__ == "__main__":
     graph, s, t = load_graph_from_file('data/graph_cycle_negatif.txt')
     graph, s, t = load_graph_from_file('data/graph_data.txt')
     graph_to_dot(graph, "output/graphe.dot")
+
+    graph, s, t = load_graph_from_file('data/test.txt')
+    graph_to_dot(graph, "output/graphe_test.dot")
+
+    graph, s, t = load_graph_from_file('data/test2.txt')
+    graph_to_dot(graph, "output/graphe_test2.dot")
 
 # dot -Tjpg output/graphe.dot -o output/img/graphe.jpg && xdg-open output/img/graphe.jpg
