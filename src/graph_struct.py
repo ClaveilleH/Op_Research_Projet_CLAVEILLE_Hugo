@@ -5,11 +5,11 @@ class Edge:
     """
     Represente une arête dans un graphe, avec une capacité et un coût associés.
     """
-    retour : bool = False
     origin: int
     dest: int
     cap: int
     cost: int
+    retour : bool = False
 
 class Graph:
     def __init__(self, n, source=0, sink=None):
@@ -33,6 +33,16 @@ class Graph:
             if edge.dest == v:
                 return edge
         return None
+    
+    def __eq__(self, graph):
+        if self.n != graph.n or self.source != graph.source or self.sink != graph.sink:
+            return False
+        for u in range(self.n):
+            edges1 = sorted(self.adj[u], key=lambda e: (e.dest, e.cap, e.cost))
+            edges2 = sorted(graph.adj[u], key=lambda e: (e.dest, e.cap, e.cost))
+            if edges1 != edges2:
+                return False
+        return True
 
 
 def load_graph_from_file(filename):

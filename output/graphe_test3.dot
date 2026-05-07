@@ -1,0 +1,19 @@
+digraph G {
+  rankdir=LR;
+  node [shape=circle, width=0.65, height=0.65, fixedsize=true];
+  5 [penwidth=3, color="black", label="s (5)"];
+  6 [shape=doublecircle, label="tt (6)"];
+  0 -> 1 [label=<15|<font color='red'>4</font>>, shape=box, color="black"];
+  0 -> 2 [label=<8|<font color='red'>4</font>>, shape=box, color="black"];
+  1 -> 2 [label=<20|<font color='red'>2</font>>, shape=box, color="black"];
+  1 -> 3 [label=<4|<font color='red'>2</font>>, shape=box, color="black"];
+  1 -> 4 [label=<10|<font color='red'>6</font>>, shape=box, color="black"];
+  2 -> 3 [label=<15|<font color='red'>1</font>>, shape=box, color="black"];
+  2 -> 4 [label=<4|<font color='red'>3</font>>, shape=box, color="black"];
+  3 -> 6 [label=<5|<font color='red'>0</font>>, shape=box, color="black"];
+  3 -> 4 [label=<20|<font color='red'>2</font>>, shape=box, color="black"];
+  4 -> 6 [label=<15|<font color='red'>0</font>>, shape=box, color="black"];
+  4 -> 2 [label=<5|<font color='red'>3</font>>, shape=box, color="black"];
+  5 -> 0 [label=<20|<font color='red'>0</font>>, shape=box, color="black"];
+  6 -> 5 [label=<100|<font color='red'>0</font>>, shape=box, color="black"];
+}

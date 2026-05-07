@@ -40,4 +40,7 @@ if __name__ == "__main__":
     graph, s, t = load_graph_from_file('data/test2.txt')
     graph_to_dot(graph, "output/graphe_test2.dot")
 
+    graph, s, t = load_graph_from_file('data/test3.txt')
+    graph_to_dot(graph, "output/graphe_test3.dot")
+
 # dot -Tjpg output/graphe.dot -o output/img/graphe.jpg && xdg-open output/img/graphe.jpg

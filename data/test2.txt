@@ -1,3 +1,5 @@
+
+# test 1 donné dans les consignes
 5 9 0 4
 0 1 20 0
 0 2 30 0
