@@ -50,7 +50,7 @@ def load_graph_from_file(filename):
         lines = f.readlines()
     # on filtre les lignes vides et les commentaires
     lines = [line.strip() for line in lines if line.strip() and not line.startswith('#')]
-    # on lit les paramètres du graphe
+    # on lit les paramètres du graphe   
     n, m, s, t = map(int, lines[0].split())
     graph = Graph(n, source=s, sink=t)
     for line in lines[1:]:

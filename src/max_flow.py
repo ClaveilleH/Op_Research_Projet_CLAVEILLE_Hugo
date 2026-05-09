@@ -71,14 +71,14 @@ if __name__ == "__main__":
     from graph_struct import load_graph_from_file
     # graph, s, t = load_graph_from_file('data/graph_classic.txt')
     # graph, s, t = load_graph_from_file('data/graph_cycle_negatif.txt')
-    # graph, s, t = load_graph_from_file('data/graph_data.txt')
-    graph, s, t = load_graph_from_file('data/test2.txt')
+    # graph, s, t = load_graph_from_file('data/test2.txt')
+    graph, s, t = load_graph_from_file('data/graph_data.txt')
 
     try:
-        max_flow, cut_edges, others = max_flow_min_cut(graph)
+        max_flow, source_reachable, sink_reachable = max_flow_min_cut(graph)
         print("Flot maximum pour le graph test :", max_flow)
-        print("Cut edges (from reachable to non-reachable):", cut_edges)
-        print("Cut edges (from non-reachable to reachable):", others)
+        print("Cut edges (from reachable to non-reachable):", source_reachable)
+        print("Cut edges (from non-reachable to reachable):", sink_reachable)
         print("Flot maximum pour le graph test :", max_flow)
         from graph_to_dot import graph_to_dot
         # graph_to_dot(graph, "output/graphe_res.dot", show_capacity=True, show_zero=True)

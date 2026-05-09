@@ -61,287 +61,42 @@ Les principaux fichiers du projet sont les suivants :
 Le rapport présente donc les choix faits dans le code, les structures de données utilisées, puis les algorithmes implémentés et les résultats obtenus sur les exemples de test.
 
 % ======================================================================================================================
-\chapter{Structure de données}
+\chapter{Structures de données}
+Pour représenter les graphes, j'ai choisi de créer une classe \texttt{Graph} qui contient une source, un puit, et le 
+nombre de sommets n, et une liste de taille n de listes d'arcs sortants où pour chaque sommet i, \texttt{graph[i]} 
+contient une liste d'objets \texttt{Edge} représentant les arcs sortants de i. 
 
-\section{Représentation générale du graphe}
+Chaque objet \texttt{Edge} contient les informations suivantes : le sommet d'origine, de destination, la capacité, 
+le coût et un booléen indiquant s'il s'agit d'un arc résiduel ou non. 
 
-Le graphe est représenté par une classe \texttt{Graph}. Elle contient :
-
+J'ai également implémenté quelques méthodes pour faciliter la manipulation des graphes :
 \begin{itemize}
-    \item \texttt{n}, le nombre de sommets ;
-    \item \texttt{source}, le sommet source ;
-    \item \texttt{sink}, le sommet puits ;
-    \item \texttt{adj}, une liste d'adjacence.
+    \item \texttt{add\_edge} : pour ajouter un arc au graphe, en créant automatiquement l'arc résiduel correspondant ;
+    \item \texttt{add\_arc} : pour ajouter un arc sans créer de résiduel, utilisé principalement pour les graphes de test ;
+    \item \texttt{get\_edge} : pour récupérer tous les arcs du graphe, utile pour les algorithmes qui doivent parcourir tous les arcs ;
 \end{itemize}
 
-Le choix d'une liste d'adjacence est naturel pour ce projet. Les algorithmes parcourent souvent les arcs sortants d'un sommet donné, par exemple lors d'un BFS ou lors des relaxations de Bellman-Ford. Une matrice d'adjacence aurait été plus simple pour chercher un arc précis, mais beaucoup moins agréable pour parcourir uniquement les arcs réellement présents.
+J'ai aussi ajouté une fonction pour tester l'egalité de deux graphes, mais cela n'a en fait aucun intérêt car les solutions de flot ne sont pas forcément uniques.
 
-Chaque case \texttt{adj[u]} contient donc la liste des arcs qui partent du sommet \texttt{u}. Cette représentation est aussi assez compacte : elle ne stocke pas les arcs inexistants.
 
-\section{Structure d'un arc}
+\chapter{Algorithmes de flots}
+\section{Flot maximum}
+Pour le calcul du flot maximum, j'ai implémenté une variante de l'algorithme de Ford-Fulkerson, plus précisément Edmonds-Karp. Le principe est de chercher à chaque étape un chemin augmentant entre la source et le puits dans le graphe résiduel. Pour cela, j'utilise un parcours en largeur, ce qui permet de choisir un chemin avec peu d'arcs et d'éviter certains mauvais comportements de Ford-Fulkerson classique.
 
-Les arcs sont représentés par une dataclass \texttt{Edge} :
+Une fois un chemin trouvé, on calcule la plus petite capacité disponible sur ce chemin. Cette valeur correspond au flot que l'on peut encore envoyer. On diminue alors les capacités des arcs directs et on augmente celles des arcs retour. L'algorithme s'arrête lorsqu'il n'existe plus de chemin augmentant entre la source et le puits. La somme des augmentations donne alors la valeur du flot maximum.
 
-\begin{lstlisting}[language=Python]
-@dataclass
-class Edge:
-    origin: int
-    dest: int
-    cap: int
-    cost: int
-    retour: bool = False
-\end{lstlisting}
+La coupe minimale est obtenue après le calcul du flot maximum. On effectue un dernier parcours dans le graphe résiduel depuis la source : les sommets encore atteignables forment un premier ensemble, et les autres sommets forment le second. Les arcs qui vont du premier ensemble vers le second correspondent à une coupe de capacité minimale.
 
-Un arc contient son origine, sa destination, sa capacité résiduelle, son coût unitaire et un booléen \texttt{retour}. Ce dernier sert à distinguer les arcs ajoutés dans le sens inverse lors de la construction du graphe résiduel. Ce choix est surtout utile pour l'affichage DOT : les arcs de retour peuvent être colorés différemment ou masqués selon le niveau de détail voulu.
+\section{Flot de coût minimum}
+Pour le flot de coût minimum, l'idée reste proche : on envoie progressivement du flot dans le graphe résiduel, mais on choisit cette fois un chemin de coût minimal. Dans ma première version, ce chemin est trouvé avec Bellman-Ford, ce qui permet de gérer des coûts négatifs dans le graphe résiduel.
 
-\section{Graphe résiduel}
+À chaque augmentation, le coût total est mis à jour en ajoutant le produit entre le flot envoyé et le coût du chemin choisi. L'algorithme continue tant qu'il existe un chemin de la source vers le puits avec une capacité résiduelle positive.
 
-Le graphe résiduel est construit directement dans la méthode \texttt{add\_edge}. Lorsqu'on ajoute un arc \((u, v)\) de capacité \(c\) et de coût \(w\), le programme ajoute aussi un arc inverse \((v, u)\) de capacité initiale \(0\) et de coût \(-w\).
+Dans une seconde version, j'ai utilisé Dijkstra pour trouver les chemins de coût minimum. Cependant, Dijkstra ne gère pas les coûts négatifs, donc j'ai dû appliquer une technique de normalisation des coûts : après chaque augmentation, les coûts sont ajustés pour garantir qu'ils restent non négatifs.
 
-\begin{lstlisting}[language=Python]
-fwd = Edge(origin=_origin, dest=_dest, cap=cap, cost=cost)
-rev = Edge(origin=_dest, dest=_origin, cap=0, cost=-cost, retour=True)
-\end{lstlisting}
+\section{Cycles négatifs}
+La détection de cycles négatifs est aussi basée sur Bellman-Ford. Après les relaxations classiques, si une arête peut encore améliorer une distance, alors le graphe contient un cycle de coût négatif.
 
-Ce choix est un point central du projet. Le flot envoyé sur un arc direct est traduit par une diminution de sa capacité résiduelle. En parallèle, la capacité de l'arc inverse augmente, ce qui permet à un algorithme futur de revenir partiellement sur une décision prise plus tôt.
-
-Par exemple, si l'on envoie une quantité \(f\) sur l'arc \((u,v)\), le code applique :
-
-\[
-c_{uv} \leftarrow c_{uv} - f
-\]
-
-\[
-c_{vu} \leftarrow c_{vu} + f
-\]
-
-Cela évite de stocker séparément le flot courant sur chaque arc. Le flot est implicite : il est lisible à partir de l'évolution des capacités résiduelles. C'est plus léger, mais cela demande d'être vigilant au moment d'interpréter les résultats.
-
-\section{Lecture des données}
-
-Les graphes sont chargés depuis des fichiers texte avec le format suivant :
-
-\begin{center}
-\begin{tabular}{|c|l|}
-\hline
-Ligne & Signification \\
-\hline
-\texttt{n m s t} & nombre de sommets, nombre d'arcs, source, puits \\
-\texttt{u v cap cost} & arc de \texttt{u} vers \texttt{v}, capacité, coût \\
-\hline
-\end{tabular}
-\end{center}
-
-La fonction \texttt{load\_graph\_from\_file} ignore les lignes vides et les commentaires, ce qui permet de garder des fichiers de test lisibles. Les fichiers \texttt{test2.txt} et \texttt{test3.txt}, dans le dossier \texttt{data}, reprennent notamment les exemples donnés dans la consigne.
-
-% ======================================================================================================================
-\chapter{Flot maximum}
-
-\section{Principe}
-
-Le flot maximum est traité dans \texttt{src/max\_flow.py}. Le code suit l'idée de Ford-Fulkerson : tant qu'il existe un chemin augmentant de la source au puits dans le graphe résiduel, on envoie le plus de flot possible sur ce chemin.
-
-Dans cette implémentation, le chemin augmentant est trouvé avec un parcours en largeur. On obtient donc une variante de type Edmonds-Karp. Ce choix rend l'algorithme plus stable qu'une recherche arbitraire de chemin, car le BFS sélectionne un chemin contenant un nombre minimal d'arcs.
-
-\section{Recherche d'un chemin augmentant}
-
-La fonction \texttt{bfs} explore uniquement les arcs dont la capacité résiduelle est strictement positive. Pour chaque sommet atteint, elle mémorise son prédécesseur, ce qui permet ensuite de reconstruire le chemin complet de la source vers le puits.
-
-Elle conserve aussi la quantité maximale de flot que l'on peut encore envoyer jusqu'à chaque sommet. Cette quantité correspond au minimum des capacités résiduelles rencontrées sur le chemin.
-
-Si le puits est atteint, la fonction renvoie :
-
-\begin{itemize}
-    \item la liste des arcs du chemin augmentant ;
-    \item la quantité de flot que l'on peut pousser sur ce chemin.
-\end{itemize}
-
-Si aucun chemin n'existe, elle renvoie un flot nul, ce qui arrête l'algorithme principal.
-
-\section{Mise à jour du graphe résiduel}
-
-Une fois un chemin trouvé, la fonction \texttt{ford\_fulkerson} met à jour les capacités résiduelles :
-
-\begin{lstlisting}[language=Python]
-edge.cap -= flow
-rev_edge.cap += flow
-\end{lstlisting}
-
-Cette opération est répétée pour tous les arcs du chemin. La variable \texttt{max\_flow} accumule la quantité totale envoyée.
-
-\section{Coupe minimale}
-
-La consigne demande aussi une coupe minimale. Dans l'approche par graphe résiduel, elle se déduit naturellement après le calcul du flot maximum. Une fois qu'il n'existe plus de chemin augmentant, on peut faire un dernier parcours depuis la source en ne suivant que les arcs de capacité résiduelle positive.
-
-Les sommets encore atteignables forment un ensemble \(S\), et les autres sommets forment \(T\). Les arcs du graphe initial qui partent de \(S\) vers \(T\) constituent alors une coupe minimale. Le code actuel calcule bien le graphe résiduel final ; la coupe peut donc être retrouvée à partir de cet état, même si elle n'est pas encore affichée par une fonction dédiée.
-
-\section{Résultat sur l'exemple de la consigne}
-
-Le fichier \texttt{data/test2.txt} correspond au problème de flot maximum donné dans la consigne. Le programme renvoie :
-
-\[
-\text{flot maximum} = 60
-\]
-
-Ce résultat est cohérent avec la capacité sortante de la source :
-
-\[
-20 + 30 + 10 = 60
-\]
-
-La source peut donc envoyer au plus 60 unités, et l'algorithme parvient effectivement à envoyer ces 60 unités jusqu'au puits.
-
-% ======================================================================================================================
-\chapter{Flot de coût minimum}
-
-\section{Objectif}
-
-Le problème du flot de coût minimum ajoute une contrainte économique au problème de flot. Il ne suffit plus d'envoyer beaucoup de flot : il faut aussi minimiser le coût total.
-
-Dans le code, le coût total est calculé en accumulant, à chaque augmentation :
-
-\[
-\text{coût total} \leftarrow \text{coût total} + f \times c(P)
-\]
-
-où \(f\) est le flot envoyé sur le chemin et \(c(P)\) le coût du chemin choisi.
-
-\section{Chemins augmentants de coût minimum}
-
-La fonction principale du fichier \texttt{src/min\_cost\_flow.py} garde la même structure générale que pour le flot maximum. La différence vient de la fonction de recherche du chemin : au lieu de choisir un chemin court en nombre d'arcs, on cherche un chemin de coût minimum dans le graphe résiduel.
-
-Pour cela, la fonction \texttt{shortest\_path} utilise Bellman-Ford. Ce choix est pertinent car le graphe résiduel peut contenir des arcs de coût négatif : chaque arc inverse a un coût opposé à celui de l'arc direct. Dijkstra classique ne peut pas être utilisé directement dans ce cas sans transformation des coûts.
-
-L'algorithme effectue donc \(n-1\) phases de relaxation, puis reconstruit le chemin vers le puits grâce au tableau des prédécesseurs. La capacité du chemin est ensuite le minimum des capacités résiduelles sur ses arcs.
-
-\section{Gestion des coûts négatifs}
-
-Les coûts négatifs apparaissent naturellement avec les arcs de retour. Ils ne sont pas un problème en eux-mêmes : ils permettent de représenter le fait qu'annuler une unité de flot sur un arc coûteux peut diminuer le coût total.
-
-En revanche, un cycle négatif dans le graphe résiduel est problématique. Si un tel cycle est exploitable, il peut permettre de réduire indéfiniment le coût sans changer la quantité de flot envoyée de la source vers le puits. C'est pour cette raison que le projet contient une détection explicite des cycles négatifs.
-
-\section{Version avec Dijkstra et renormalisation}
-
-La consigne demande aussi une variante avec Dijkstra et renormalisation des coûts. L'idée théorique consiste à utiliser des potentiels \(p(v)\) pour transformer les coûts :
-
-\[
-c'_p(u,v) = c(u,v) + p(u) - p(v)
-\]
-
-Si les potentiels sont bien choisis, les coûts réduits deviennent non négatifs, ce qui permet d'utiliser Dijkstra tout en conservant les plus courts chemins corrects dans le graphe original.
-
-Dans l'état actuel du dépôt, le fichier \texttt{src/Dijkstra\_min\_cost\_flow.py} expose la même interface que \texttt{min\_cost\_flow.py} et sert à comparer les résultats dans \texttt{src/test.py}. La logique interne reste très proche de la version Bellman-Ford. Le test vérifie donc surtout que les deux chemins d'exécution produisent le même flot, le même coût et le même graphe résiduel. Pour une version Dijkstra complète, il faudrait remplacer la recherche \texttt{shortest\_path} par un Dijkstra sur coûts réduits et mettre à jour les potentiels après chaque augmentation.
-
-\section{Résultat sur l'exemple de la consigne}
-
-Le fichier \texttt{data/test3.txt} modélise le problème de flot de coût minimum donné dans la consigne. Une source artificielle est reliée au sommet 0, le puits artificiel reçoit le flot depuis les sommets 3 et 4, et un arc de retour du puits vers la source est présent dans les données.
-
-Sur ce fichier, le programme renvoie :
-
-\[
-\text{flot maximum} = 20
-\]
-
-\[
-\text{coût total} = 150
-\]
-
-Le résultat montre que les 20 unités demandées peuvent être envoyées, tout en tenant compte des coûts des arcs internes.
-
-% ======================================================================================================================
-\chapter{Détection de cycles négatifs}
-
-\section{Pourquoi c'est nécessaire}
-
-Dans un problème de flot de coût minimum, les cycles négatifs sont un cas à surveiller. Un cycle négatif signifie que l'on peut parcourir un cycle et diminuer le coût total. Si ce cycle est utilisable dans le graphe résiduel, l'optimalité de la solution devient suspecte.
-
-C'est pour cela que le fichier \texttt{src/detect\_negative\_cycle.py} implémente une détection par Bellman-Ford.
-
-\section{Algorithme utilisé}
-
-Le principe est le suivant :
-
-\begin{enumerate}
-    \item initialiser la distance de la source à \(0\) et les autres distances à \(+\infty\) ;
-    \item relâcher tous les arcs \(n-1\) fois ;
-    \item refaire un passage sur les arcs ;
-    \item si une distance peut encore être améliorée, alors un cycle négatif est détecté.
-\end{enumerate}
-
-Ce choix est classique et cohérent avec le reste du projet, car Bellman-Ford accepte les coûts négatifs.
-
-\section{Normalisation}
-
-Le fichier contient aussi une fonction \texttt{normalize\_graph}. Elle ajoute une constante à tous les coûts afin de rendre les poids non négatifs.
-
-Cette normalisation est utile pour produire un graphe plus simple à manipuler ou à visualiser, mais elle ne doit pas être confondue avec la méthode des potentiels utilisée pour Dijkstra. Ajouter la même constante à tous les arcs change le coût des chemins en fonction de leur nombre d'arcs. Cela peut donc modifier le choix du plus court chemin. C'est une solution simple pour éviter des poids négatifs dans certains tests, mais pas une preuve d'optimalité pour le min-cost flow.
-
-% ======================================================================================================================
-\chapter{Visualisation et tests}
-
-\section{Export DOT}
-
-Le fichier \texttt{src/graph\_to\_dot.py} permet d'exporter un graphe au format DOT. C'est un outil pratique pendant le développement, parce qu'il permet de voir les capacités résiduelles et les coûts après l'exécution des algorithmes.
-
-Les arcs de retour peuvent être affichés en bleu grâce au champ \texttt{retour}. Les étiquettes affichent la capacité et le coût, ce qui aide à comprendre comment le graphe évolue après chaque augmentation.
-
-\section{Tests effectués}
-
-Les principaux tests lancés sont les suivants :
-
-\begin{center}
-\begin{tabular}{|l|l|l|}
-\hline
-Fichier & Algorithme & Résultat obtenu \\
-\hline
-\texttt{data/test2.txt} & flot maximum & flot \(= 60\) \\
-\hline
-\texttt{data/test3.txt} & flot coût minimum & flot \(= 20\), coût \(= 150\) \\
-\hline
-\texttt{data/graph\_classic.txt} & comparaison des deux versions & flot \(= 23\), coût \(= 174\) \\
-\hline
-\end{tabular}
-\end{center}
-
-Le fichier \texttt{src/test.py} compare notamment les sorties des deux modules de flot de coût minimum : \texttt{min\_cost\_flow.py} et \texttt{Dijkstra\_min\_cost\_flow.py}. Il vérifie que les deux résultats sont identiques et que les graphes résiduels finaux sont égaux.
-
-% ======================================================================================================================
-\chapter{Choix et limites}
-
-\section{Choix principaux}
-
-Le premier choix important a été de construire une structure de graphe résiduel explicite. Cela rend les algorithmes plus proches de leur description théorique : augmenter un flot revient simplement à modifier les capacités des arcs directs et inverses.
-
-Le deuxième choix a été d'utiliser Bellman-Ford pour les chemins de coût minimum. C'est moins rapide que Dijkstra, mais plus robuste dans un premier temps, parce que les arcs de retour introduisent naturellement des coûts négatifs.
-
-Le troisième choix a été de séparer les responsabilités :
-
-\begin{itemize}
-    \item la structure du graphe est isolée dans un fichier dédié ;
-    \item les algorithmes de flot sont dans leurs propres modules ;
-    \item la détection de cycles négatifs est indépendante ;
-    \item la visualisation est séparée de la logique algorithmique.
-\end{itemize}
-
-Cette séparation rend le code plus facile à modifier. Par exemple, on peut remplacer la recherche de plus court chemin dans le flot de coût minimum sans toucher à la structure du graphe.
-
-\section{Limites actuelles}
-
-Le projet répond aux points essentiels du calcul de flot et du graphe résiduel, mais certaines améliorations restent possibles.
-
-La coupe minimale n'est pas encore retournée directement par \texttt{max\_flow.py}. Elle est déductible du graphe résiduel final, mais une fonction dédiée rendrait le résultat plus clair.
-
-La version Dijkstra avec potentiels n'est pas encore pleinement séparée de la version Bellman-Ford. Le fichier existe et les tests comparent les sorties, mais une implémentation complète devrait introduire les potentiels, les coûts réduits et une file de priorité.
-
-Enfin, le flot sur chaque arc original n'est pas stocké explicitement. Le choix de ne garder que les capacités résiduelles simplifie les mises à jour, mais oblige à reconstruire le flot final si l'on veut l'afficher sous la forme ``flot / capacité'' pour chaque arc initial.
-
-% ======================================================================================================================
-\chapter{Conclusion}
-
-Ce projet m'a permis de mieux comprendre le rôle du graphe résiduel dans les problèmes de flot. Au départ, on peut voir Ford-Fulkerson comme une simple répétition de chemins entre une source et un puits. En pratique, toute la subtilité vient de la possibilité de corriger les décisions précédentes grâce aux arcs de retour.
-
-La structure commune \texttt{Graph}/\texttt{Edge} rend cette idée visible dans le code : les algorithmes ne manipulent pas une formule abstraite, ils modifient directement les capacités disponibles. Le flot maximum utilise cette structure pour saturer progressivement le réseau, tandis que le flot de coût minimum ajoute la notion de coût et choisit les chemins les moins chers.
-
-Les tests réalisés sur les exemples de la consigne donnent des résultats cohérents : un flot maximum de 60 sur le premier réseau et un flot de 20 pour un coût total de 150 sur l'exemple de coût minimum. Le projet pourrait encore être amélioré avec l'affichage direct de la coupe minimale et une vraie version Dijkstra avec potentiels, mais la base algorithmique et la structure de données du graphe résiduel sont en place.
+Pour la normalisation des coûts, j'ai choisi de soustraire le coût minimum de tous les arcs sortants de chaque sommet. Cela garantit que tous les coûts deviennent non négatifs.
 
 \end{document}
